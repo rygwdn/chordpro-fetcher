@@ -23,11 +23,10 @@
   },
   "dependencies": {
     "@google-cloud/storage": "^2.3.3",
-    "busboy": "^0.3.0",
-    "escape-html": "^1.0.3",
-    "jsdom": "^14.0.0",
-    "puppeteer": "^1.13.0",
-    "safe-buffer": "^5.1.2"
+    "cheerio": "^1.0.0-rc.2",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.4",
+    "request-promise-native": "^1.0.7"
   },
   "cloud-repo-tools": {
     "requiresKeyFile": true,

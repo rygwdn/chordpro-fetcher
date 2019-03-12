@@ -1,9 +1,8 @@
 'use strict';
 
-//const jsdom = require("jsdom");
-const puppeteer = require('puppeteer');
-
-let page;
+const rp = require('request-promise');
+const cheerio = require('cheerio')
+const url = require('url');
 
 const onsongKeys = {
   'BPM': 'Tempo',
@@ -12,53 +11,58 @@ const onsongKeys = {
 }
 
 async function logIn(username, password) {
-  const browser = await puppeteer.launch({args: ['--no-sandbox']});
-  page = await browser.newPage();
-
-  await page.goto('https://www.worshiptogether.com/membership/log-in/')
-
-  await page.evaluate(async (username, password) => {
-    document.querySelector('#loginModel_Username').value = username
-    document.querySelector('#loginModel_Password').value = password
-  }, username, password)
-
   if (!username || !password) {
     throw new Error("must provide username and password")
   }
 
-  await Promise.all([
-    page.waitForNavigation(),
-    page.click('button.submit'),
-  ])
+  const loginUrl = 'https://www.worshiptogether.com/membership/log-in/'
+  const loginPage = await rp(loginUrl)
+  const $ = cheerio.load(loginPage)
+  $('#loginModel_Username').val(username)
+  $('#loginModel_Password').val(password)
+  const form = $('form:has(#loginModel_Username)')
 
-  return page
+  const data = form.serializeArray()
+  const postUrl = form.attr('action')
+
+  const request = {
+    method: 'POST',
+    uri: url.resolve(loginUrl, postUrl),
+    jar: true,
+    followAllRedirects: true,
+    form: data.reduce((f, t) => {
+      f[t.name] = t.value
+      return f
+    }, {})
+  }
+
+  return await rp(request)
 }
 
-async function getMetadata(page) {
-  const fields = await page.evaluate((onsongKeys) =>
-    Array
-    .from(document.querySelectorAll('.detail'))
-    .filter(m => m.children.length > 1)
-    .map(m => [m.children[0].innerText, m.children[1].innerText])
+async function getMetadata($page) {
+  const fields = Array.from($page('.detail'))
+    .map(m => $page(m).children())
+    .filter(c => c.length > 1)
+    .map(c => [$page(c[0]).text().trim(), $page(c[1]).text().trim()])
     .map(([k, v]) => [k.replace(/(\(s\))?( #)?:$/g, ''), v])
     .filter(([k, v]) => Object.keys(onsongKeys).includes(k))
-    .map(([k, v]) => `${onsongKeys[k]}: ${v}`),
-    onsongKeys)
+    .map(([k, v]) => `${onsongKeys[k]}: ${v}`)
 
-  const header = await page.evaluate(() => document
-    .querySelector('.t-song-details__marquee__copy')
-    .innerText
+  const header = $page('.t-song-details__marquee__copy')
+    .text()
     .split('\n')
-    .filter(s => s))
+    .map(l => l.trim())
+    .filter(s => s)
 
   return header.concat(fields)
 }
 
-async function getChordPro(page) {
-  const chordProBody = await page.evaluate(async () => {
-    const chordProUrl = document.querySelector('.chord-pro-disp a[href*="DownLoadChordPro"]').href
-    const response = await fetch(chordProUrl)
-    return await response.text()
+async function getChordProContent(root, $page) {
+  const chordProUrl = $page('.chord-pro-disp a[href*="DownLoadChordPro"]').prop('href')
+
+  const chordProBody = await rp({
+    uri: url.resolve(root, chordProUrl),
+    jar: true,
   })
 
   return cleanBody(chordProBody)
@@ -77,39 +81,60 @@ function cleanBody(body) {
   return updatedBody
 }
 
-async function getPage(url) {
-  if (!page) {
-    page = await logIn(process.env.WT_USER, process.env.WT_PASS)
+let didLogin = false;
+
+async function getPage(url, username, password) {
+  if (!didLogin) {
+    await logIn(username || process.env.WT_USER, password || process.env.WT_PASS)
+    didLogin = true
   }
 
-  await page.goto(url);
+  const $page = cheerio.load(await rp({
+    uri: url,
+    jar: true,
+  }))
 
-  const metadata = await getMetadata(page)
-  const chordProBody = await getChordPro(page)
+  const metadata = await getMetadata($page)
+  const chordProBody = await getChordProContent(url, $page)
 
   const content = metadata.join("\n") + "\n" + "\n" + chordProBody
   return content
 }
 
 exports.getChordPro = async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+
+  if (req.method === 'OPTIONS') {
+    // Send response to OPTIONS requests
+    res.set('Access-Control-Allow-Methods', 'GET');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.set('Access-Control-Max-Age', '3600');
+    res.status(204).send('');
+    return
+  }
+
+  // Set CORS headers for the main request
+  res.set('Access-Control-Allow-Origin', '*');
+
   const url = req.query.url;
 
   if (!url) {
     return res.send(
-      'Please provide URL as GET parameter, for example: <a href="?url=https://example.com">?url=https://example.com</a>'
+      'Please provide URL as GET parameter, for example: ?url=https://example.com'
     );
   }
 
-  const pageData = await getPage(url)
+  const pageData = await getPage(url, process.env.WT_USER, process.env.WT_PASS)
   res.set('Content-Type', 'text/plain');
   res.send(pageData);
 };
 
 function runTest() {
   const sampleUrl = 'https://www.worshiptogether.com/songs/heaven-fall-cody-carnes/'
-  console.log(process.env)
+  const username = process.argv[2]
+  const password = process.argv[3]
 
-  getPage(sampleUrl)
+  getPage(sampleUrl, username, password)
     .then((file) => {
       console.log(file)
       process.exit()
