@@ -12,19 +12,22 @@
     "node": ">=8"
   },
   "scripts": {
+    "dist-web": "rollup src/index.js --file dist/index.js",
+    "dist-short": "rollup src/shortcut.js --file dist/shortcut.js --name=shortcut --format=iife",
     "test": "mocha test/*.test.js --timeout=60000"
   },
   "devDependencies": {
     "@google-cloud/nodejs-repo-tools": "^3.0.0",
     "mocha": "^6.0.0",
     "proxyquire": "^2.1.0",
+    "rollup": "^1.6.0",
     "sinon": "^7.0.0",
     "uuid": "^3.3.2"
   },
   "dependencies": {
     "@google-cloud/storage": "^2.3.3",
+    "@joshfarrant/shortcuts-js": "^0.5.0",
     "cheerio": "^1.0.0-rc.2",
-    "lodash": "^4.17.11",
     "request": "^2.88.0",
     "request-promise": "^4.2.4",
     "request-promise-native": "^1.0.7"

@@ -1,7 +1,7 @@
 'use strict';
 
-const { getPage } = require('./worshiptogether')
-const { buildFlow, cleanBody } = require('./wtparser')
+const { getPage } = require('./index')
+const { buildFlow, cleanBody } = require('./worshiptogether')
 
 function runTest() {
   const sampleUrl = 'https://www.worshiptogether.com/songs/heaven-fall-cody-carnes/'
