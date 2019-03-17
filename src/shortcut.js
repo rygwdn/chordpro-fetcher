@@ -1,12 +1,16 @@
 import * as wt from './worshiptogether'
 import * as ug from './ultimateguitar'
 
+const getElement = (s) => document.querySelectorAll(s)
+const fetchUrl = async (url) => await (await fetch(url)).text()
+
+
 async function getFromWT() {
-  return await wt.buildFile((s) => document.querySelectorAll(s), async (url) => await (await fetch(url)).text())
+  return await wt.buildFile(getElement, fetchUrl)
 }
 
 async function getFromUG() {
-  return await ug.buildFile(UGAPP.store.page.data)
+  return await ug.buildFile(getElement)
 }
 
 async function getFile() {
@@ -21,10 +25,11 @@ async function getFile() {
   throw new Error('Unrecognized page')
 }
 
-export async function run() {
+export async function run(done) {
+  done = done || completion
   try {
-    completion(await getFile())
+    done(await getFile())
   } catch (err) {
-    completion(err)
+    done('ERROR: ' + err)
   }
 }
