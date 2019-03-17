@@ -13,7 +13,7 @@ async function getFromUG() {
   return await ug.buildFile(getElement)
 }
 
-async function getFile() {
+export async function getFile() {
   if (window.location.hostname.match(/\.ultimate-guitar\.com$/)) {
     return await getFromUG()
   }

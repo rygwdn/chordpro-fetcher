@@ -37,38 +37,54 @@ function getArtistFromLinks(getElement) {
   return artistLinks.length > 0 ? artistLinks[0].innerText.trim() : null
 }
 
+
+function getFirst(elements, ...path) {
+  for (const part of path) {
+    elements = elements.map(s => s[part]).filter(x => x)
+  }
+  return elements.length > 0 ? elements[0] : null
+}
+
+const getSongFromHeader = (getElement) =>
+  getSingle(getElement, 'h1').innerText.match(/(.*) Chords/i)[1]
+
+function getBpm(getElement) {
+  const bpmFields = getElement('[data-bpm]')
+  if (bpmFields.length > 0) {
+    return parseInt(bpmFields[0].dataset.bpm)
+  }
+
+  const bpmsFromHeaders = Array.from(getElement("header span"))
+    .map(h => h.innerText.trim())
+    .map(h => h.match(/^([0-9]+) bpm$/i))
+    .filter(x => x)
+    .map(m => parseInt(m[1]))
+
+  return bpmsFromHeaders.length > 0
+    ? bpmsFromHeaders[0]
+    : null
+}
+
+function getTab(getElement) {
+  const dirtyTab = getSingle(getElement, 'pre').textContent
+  return cleanBody(dirtyTab)
+}
+
+function getCapo(getElement) {
+  const dirtyCapo = getMeta(getElement, 'Capo')
+  return dirtyCapo ? parseInt(dirtyCapo.replace(/[^0-9]/g, '')) : null
+}
+
 export function buildFile(getElement) {
-  // TODO: cleanup with lodash?
   const schemas = Array.from(getElement('script[type="application/ld+json"]'))
     .map(s => JSON.parse(s.innerText))
-  const namesFromSchema = schemas
-    .map(s => s["name"])
-    .filter(x => x)
-  const artistsFromSchema = schemas
-    .map(s => s["byArtist"])
-    .filter(x => x)
-    .map(s => s["name"])
-    .filter(x => x)
 
-  const song = namesFromSchema.length > 0
-    ? namesFromSchema[0]
-    : getSingle(getElement, 'h1').innerText.match(/(.*) Chords/i)[1]
-
-  const artist = artistsFromSchema.length > 0
-    ? artistsFromSchema[0]
-    : getArtistFromLinks(getElement)
-
-  // TODO: try to remove the extra newlines in the text
-  const dirtyTab = getSingle(getElement, 'pre').innerText
-  const tab = cleanBody(dirtyTab)
-
-  const dirtyCapo = getMeta(getElement, 'Capo')
-  const capo = dirtyCapo ? parseInt(dirtyCapo.replace(/[^0-9]/g, '')) : null
-
+  const song = getFirst(schemas, "name") || getSongFromHeader(getElement)
+  const artist = getFirst(schemas, "byArtist.name") || getArtistFromLinks(getElement)
+  const tab = getTab(getElement)
+  const capo = getCapo(getElement) || ''
   const key = getMeta(getElement, 'Key')
-
-  const bpmFields = getElement('[data-bpm]')
-  const bpm = bpmFields.length > 0 ? parseInt(bpmFields[0].dataset.bpm) : null
+  const bpm = getBpm(getElement)
 
   const flow = buildFlow(tab)
 
