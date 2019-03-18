@@ -12,7 +12,7 @@
     "node": ">=8"
   },
   "scripts": {
-    "dist-web": "rollup src/index.js --file dist/index.js",
+    "dist-onsong": "node src/openinonsong.js",
     "dist-short": "rollup src/shortcut.js --file dist/shortcut.js --name=shortcut --format=iife",
     "test": "mocha test/*.test.js --timeout=60000"
   },
