@@ -1,6 +1,9 @@
 import * as wt from './worshiptogether'
 import * as ug from './ultimateguitar'
 
+const EXPECTED_SHORTCUT_VERSION = 1
+const GITHUB_URL = 'https://github.com/rygwdn/chordpro-fetcher'
+
 const getElement = (s) => document.querySelectorAll(s)
 const fetchUrl = async (url) => await (await fetch(url)).text()
 
@@ -25,11 +28,24 @@ export async function getFile() {
   throw new Error('Unrecognized page')
 }
 
-export async function run(done) {
-  done = done || completion
+export async function run(version) {
+  if (version !== EXPECTED_SHORTCUT_VERSION) {
+    completion({
+      versionError: `There is an update to this shortcut. You are on version ${version}, but the current version is ${EXPECTED_SHORTCUT_VERSION}.`,
+      url: GITHUB_URL,
+    })
+    return
+  }
+
   try {
-    done(await getFile())
+    const file = await getFile()
+    completion({
+      file: file,
+      name: file.split('\n')[0],
+    })
   } catch (err) {
-    done('ERROR: ' + err)
+    completion({
+      error: '' + err
+    })
   }
 }
