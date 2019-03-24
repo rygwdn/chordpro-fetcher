@@ -15,7 +15,8 @@ async function getMetadata(getElement) {
     .map(c => [c[0].textContent.trim(), c[1].textContent.trim()])
     .map(([k, v]) => [k.replace(/(\(s\))?( #)?:$/g, ''), v])
     .filter(([k, v]) => Object.keys(onsongKeys).includes(k))
-    .map(([k, v]) => `${onsongKeys[k]}: ${v}`)
+
+  const fieldLines = fields.map(([k, v]) => `${onsongKeys[k]}: ${v}`)
 
   const header = Array.from(getElement('.t-song-details__marquee__copy'))[0]
     .textContent
@@ -23,15 +24,19 @@ async function getMetadata(getElement) {
     .map(l => l.trim())
     .filter(s => s)
 
-  const title = header[0]
-  const author = header[1]
+  const writer = fields
+    .filter(([k, v]) => k === 'Writer')
+    .map(([k, v]) => v)[0]
+  const title = header[0] || 'Unknown'
+  const author = header[1] || writer || null
 
   // Force OnSong to use Capo 0
   const alwaysFields = ['Capo:']
 
   const metadataLines = [author]
-    .concat(fields)
+    .concat(fieldLines)
     .concat(alwaysFields)
+    .filter(l => l)
     .map(line => line.replace(/ *, /g, '; '))
 
   return [title].concat(metadataLines)
