@@ -30,7 +30,16 @@ export function cleanBody(body) {
       .map(t => t.match(/[a-zA-Z]/) ? `[${t}]` : t)
       .join(' ')
 
-    return `| ${withNewBrackets} |`
+    return withNewBrackets
+  })
+
+  // Add |'s before and after lines containing just chords
+  updatedBody = updatedBody.replace(/^( *\[.*\] *)$/gim, m => {
+    const nonChordNonWhitespaceChars = m.replace(/\[[^\]]*\]/g, '').replace(/\s/g, '').length
+    if (nonChordNonWhitespaceChars > 0) {
+      return m
+    }
+    return `| ${m} |`
   })
 
   for (const prt of songParts) {
